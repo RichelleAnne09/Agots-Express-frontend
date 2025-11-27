@@ -1,4 +1,4 @@
-import { Bell, LogOut, Search, ShoppingCart, User } from "lucide-react";
+import { Bell, LogOut, ShoppingCart, User } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -22,17 +22,10 @@ export const DashboardHeader = () => {
 
   return (
     <header className="sticky top-0 bg-white z-10 border-b border-gray-200 p-4 flex justify-between items-center shadow-sm">
-      <div className="flex-1">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Search orders, customers, menu items..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-full bg-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-          />
-        </div>
-      </div>
+      {/* Left side placeholder removed (no search) */}
+      <div className="flex-1"></div>
 
+      {/* Right side icons */}
       <div className="flex items-center gap-6 ml-4 relative">
         {/* Notification */}
         <button onClick={handleNotificationClick} className="relative">
@@ -71,7 +64,7 @@ export const DashboardHeader = () => {
           {showAdminMenu && (
             <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-lg py-2 text-sm z-20">
               <button
-                onClick={handleLogout} // Use navigate here
+                onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 hover:text-gray-900 w-full transition"
               >
                 <LogOut size={16} /> Log Out
