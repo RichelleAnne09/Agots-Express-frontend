@@ -6,7 +6,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -14,6 +14,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -21,83 +22,129 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
+import {
+  fetchKeyMetrics,
+  fetchRevenueTrend,
+  fetchSalesByCategory,
+  fetchTopItems,
+} from "../api/AnalyticsAPI";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
 import { DashboardHeader } from "../ui/DashboardHeader";
 import { DashboardSidebar } from "../ui/DashboardSidebar";
 
-// Data
-const revenueData = [
-  { month: "Jan", revenue: 45000, orders: 320 },
-  { month: "Feb", revenue: 52000, orders: 380 },
-  { month: "Mar", revenue: 48000, orders: 350 },
-  { month: "Apr", revenue: 61000, orders: 420 },
-  { month: "May", revenue: 55000, orders: 390 },
-  { month: "Jun", revenue: 67000, orders: 480 },
-  { month: "Jul", revenue: 72000, orders: 520 },
-];
-
-const categoryData = [
-  { name: "Main Courses", value: 45, color: "hsl(var(--accent))" },
-  { name: "Appetizers", value: 20, color: "hsl(var(--secondary))" },
-  { name: "Desserts", value: 15, color: "hsl(var(--warning))" },
-  { name: "Beverages", value: 12, color: "hsl(var(--success))" },
-  { name: "Catering", value: 8, color: "hsl(var(--primary))" },
-];
-
-const popularItems = [
-  { name: "Chicken Adobo", orders: 324, revenue: "₱90,720" },
-  { name: "Lechon Kawali", orders: 298, revenue: "₱113,240" },
-  { name: "Sisig", orders: 276, revenue: "₱88,320" },
-  { name: "Sinigang", orders: 245, revenue: "₱85,750" },
-  { name: "Kare-Kare", orders: 198, revenue: "₱83,160" },
-];
-
-const keyMetrics = [
-  {
-    title: "Total Revenue",
-    value: "₱425,000",
-    change: "+12.5% from last month",
-    changeType: "positive",
-    icon: DollarSign,
-    iconColor: "bg-blue-400",
-  },
-  {
-    title: "Total Orders",
-    value: "2,860",
-    change: "+8.2% from last month",
-    changeType: "positive",
-    icon: ShoppingCart,
-    iconColor: "bg-yellow-400",
-  },
-  {
-    title: "New Customers",
-    value: "342",
-    change: "-2.4% from last month",
-    changeType: "negative",
-    icon: Users,
-    iconColor: "bg-green-500",
-  },
-  {
-    title: "Avg Rating",
-    value: "4.8",
-    change: "+0.3 from last month",
-    changeType: "positive",
-    icon: Star,
-    iconColor: "bg-orange-400",
-  },
-];
-
 const Analytics = () => {
+  const [revenueData, setRevenueData] = useState([]);
+  const [groupData, setGroupData] = useState([]);
+  const [popularItems, setPopularItems] = useState([]);
+  const [keyMetrics, setKeyMetrics] = useState([]);
+
+  // Percentage change helper
+  const calcPercentChange = (current, prev) => {
+    current = Number(current ?? 0);
+    prev = Number(prev ?? 0);
+    if (prev === 0) return current === 0 ? "0%" : "+100%";
+    const percent = ((current - prev) / prev) * 100;
+    return (percent > 0 ? "+" : "") + percent.toFixed(1) + "%";
+  };
+
+  const fetchAnalyticsData = async () => {
+    try {
+      const revenueTrend = await fetchRevenueTrend();
+      const salesByGroup = await fetchSalesByCategory();
+      const topItems = await fetchTopItems();
+      const metrics = await fetchKeyMetrics();
+
+      setRevenueData(
+        revenueTrend.length
+          ? revenueTrend
+          : [{ month: "No Data", revenue: 0, orders: 0 }]
+      );
+
+      setGroupData(
+        salesByGroup.length
+          ? salesByGroup.map((g) => ({
+              ...g,
+              color: g.color || "hsl(var(--accent))",
+            }))
+          : [
+              { name: "Main Course", value: 0, color: "#8884d8" },
+              { name: "Dessert", value: 0, color: "#82ca9d" },
+              { name: "Appetizer", value: 0, color: "#ffc658" },
+              { name: "Beverage", value: 0, color: "#ff7f50" },
+              { name: "Combo Meal", value: 0, color: "#a569bd" },
+            ]
+      );
+
+      setPopularItems(
+        topItems.length ? topItems : [{ name: "No Data", orders: 0 }]
+      );
+
+      // Key metrics
+      const metricsData = [
+        {
+          title: "Total Revenue",
+          value: `₱${Number(metrics.total_revenue ?? 0).toLocaleString()}`,
+          change: calcPercentChange(
+            metrics.total_revenue,
+            metrics.prev_total_revenue
+          ),
+          icon: DollarSign,
+          iconColor: "bg-blue-400",
+        },
+        {
+          title: "Total Orders",
+          value: Number(metrics.total_orders ?? 0).toLocaleString(),
+          change: calcPercentChange(
+            metrics.total_orders,
+            metrics.prev_total_orders
+          ),
+          icon: ShoppingCart,
+          iconColor: "bg-yellow-400",
+        },
+        {
+          title: "New Customers",
+          value: Number(metrics.new_customers ?? 0).toLocaleString(),
+          change: calcPercentChange(
+            metrics.new_customers,
+            metrics.prev_new_customers
+          ),
+          icon: Users,
+          iconColor: "bg-green-500",
+        },
+        {
+          title: "Avg Rating",
+          value: Number(metrics.avg_rating ?? 0).toFixed(1),
+          change: calcPercentChange(
+            metrics.avg_rating ?? 0,
+            metrics.prev_avg_rating ?? 0
+          ),
+          icon: Star,
+          iconColor: "bg-orange-400",
+        },
+      ];
+
+      const formattedMetrics = metricsData.map((m) => ({
+        ...m,
+        changeType: m.change.startsWith("-") ? "negative" : "positive",
+      }));
+
+      setKeyMetrics(formattedMetrics);
+    } catch (err) {
+      console.error("Failed to fetch analytics data:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#F4F6F9]">
       <DashboardSidebar />
-
       <div className="pl-64 transition-all duration-300">
         <DashboardHeader />
 
         <main className="p-6 space-y-6">
-          {/* Page Title */}
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Analytics & Reports
@@ -149,7 +196,6 @@ const Analytics = () => {
                       <metric.icon size={28} className="text-white" />
                     )}
                   </div>
-
                   <div className="flex-1 pl-20">
                     <p className="text-gray-500 text-sm">{metric.title}</p>
                     <p className="text-2xl font-bold mt-1">{metric.value}</p>
@@ -167,9 +213,8 @@ const Analytics = () => {
             })}
           </div>
 
-          {/* Charts Row 1 */}
+          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Area Chart */}
             <Card>
               <CardHeader>
                 <CardTitle>Revenue & Orders Trend</CardTitle>
@@ -197,7 +242,6 @@ const Analytics = () => {
                         />
                       </linearGradient>
                     </defs>
-
                     <CartesianGrid
                       strokeDasharray="3 3"
                       stroke="hsl(var(--border))"
@@ -206,8 +250,15 @@ const Analytics = () => {
                       dataKey="month"
                       stroke="hsl(var(--muted-foreground))"
                     />
-                    <YAxis stroke="hsl(var(--muted-foreground))" />
-
+                    <YAxis
+                      yAxisId="left"
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      stroke="hsl(var(--muted-foreground))"
+                    />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
@@ -215,30 +266,42 @@ const Analytics = () => {
                         borderRadius: "8px",
                       }}
                     />
-
+                    <Legend verticalAlign="top" height={36} />
                     <Area
+                      yAxisId="left"
                       type="monotone"
                       dataKey="revenue"
+                      name="Revenue (₱)"
                       stroke="hsl(var(--accent))"
                       strokeWidth={3}
                       fill="url(#revenueGradient)"
+                      activeDot={{ r: 6 }}
+                      isAnimationActive
+                    />
+                    <Area
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="orders"
+                      name="Orders"
+                      stroke="#FF7F50"
+                      fill="rgba(255,127,80,0.2)"
+                      activeDot={{ r: 6 }}
+                      isAnimationActive
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Pie Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Sales by Category</CardTitle>
+                <CardTitle>Sales by Group</CardTitle>
               </CardHeader>
-
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={categoryData}
+                      data={groupData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -247,12 +310,12 @@ const Analytics = () => {
                       }
                       outerRadius={100}
                       dataKey="value"
+                      stroke="none"
                     >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
+                      {groupData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} stroke="none" />
                       ))}
                     </Pie>
-
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
@@ -266,12 +329,10 @@ const Analytics = () => {
             </Card>
           </div>
 
-          {/* Bar Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>Top Selling Items</CardTitle>
+              <CardTitle>Top Selling Menu Items</CardTitle>
             </CardHeader>
-
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={popularItems}>
@@ -281,7 +342,6 @@ const Analytics = () => {
                   />
                   <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
                   <YAxis stroke="hsl(var(--muted-foreground))" />
-
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
@@ -289,11 +349,11 @@ const Analytics = () => {
                       borderRadius: "8px",
                     }}
                   />
-
                   <Bar
                     dataKey="orders"
                     fill="hsl(var(--accent))"
                     radius={[8, 8, 0, 0]}
+                    stroke="none"
                   />
                 </BarChart>
               </ResponsiveContainer>
