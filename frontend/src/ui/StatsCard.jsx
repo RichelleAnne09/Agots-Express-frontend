@@ -27,6 +27,9 @@ export const StatsCard = ({
     "bg-blue-400": "bg-gradient-to-br from-blue-400 to-blue-300",
     "bg-green-500": "bg-gradient-to-br from-green-500 to-green-400",
     "bg-orange-400": "bg-gradient-to-br from-orange-400 to-orange-300",
+    "bg-red-500": "bg-gradient-to-br from-red-500 to-red-400",
+    "bg-pink-500": "bg-gradient-to-br from-pink-500 to-pink-400",
+    "bg-indigo-500": "bg-gradient-to-br from-indigo-500 to-indigo-400",
   };
 
   const gradientClass =

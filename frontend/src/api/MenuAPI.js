@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000/api/menu";
 
-// Function to handle HTTP requests
+// Generic API request handler
 const apiRequest = async (method, url, data = null) => {
   try {
     const config = { method, url, data };
@@ -19,17 +19,15 @@ const apiRequest = async (method, url, data = null) => {
   }
 };
 
-// ======================
-// MENU ITEMS API
-// ======================
-
 // Fetch all menu items
-export const fetchMenuItems = async () => {
-  return apiRequest("GET", API_URL);
-};
+export const fetchMenuItems = async () => apiRequest("GET", API_URL);
 
 // Create a new menu item
 export const createMenuItem = async (menuItem) => {
+  if (!menuItem.name || !menuItem.price || !menuItem.group) {
+    throw new Error("Name, price, and group are required fields.");
+  }
+
   const data = {
     name: menuItem.name,
     category: menuItem.category === "None" ? null : menuItem.category,
@@ -41,15 +39,23 @@ export const createMenuItem = async (menuItem) => {
   return apiRequest("POST", API_URL, data);
 };
 
-// Update an existing menu item
+// Update a menu item
 export const updateMenuItem = async (id, updatedData) => {
+  if (!updatedData.name || !updatedData.price || !updatedData.group) {
+    throw new Error("Name, price, and group are required fields.");
+  }
+
   const data = {
     name: updatedData.name,
     category: updatedData.category === "None" ? null : updatedData.category,
-    price: updatedData.price,
-    description: updatedData.description,
+    price: parseFloat(updatedData.price),
+    description: updatedData.description || null,
     group: updatedData.group,
   };
 
   return apiRequest("PUT", `${API_URL}/${id}`, data);
 };
+
+// Delete a menu item
+export const deleteMenuItem = async (id) =>
+  apiRequest("DELETE", `${API_URL}/${id}`);
