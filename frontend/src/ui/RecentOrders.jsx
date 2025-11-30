@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { fetchRecentOrders } from "../api/StatsAPI"; // make sure the path is correct
+import { useEffect, useState } from "react";
+import { fetchOrderItems, fetchRecentOrders } from "../api/StatsAPI";
 
 export const RecentOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -13,12 +13,17 @@ export const RecentOrders = () => {
     cancelled: "bg-red-500 text-white",
   };
 
-  // Function to fetch orders
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const data = await fetchRecentOrders();
-      setOrders(data);
+      const ordersData = await fetchRecentOrders();
+      const ordersWithItems = await Promise.all(
+        ordersData.map(async (order) => {
+          const items = await fetchOrderItems(order.id);
+          return { ...order, items };
+        })
+      );
+      setOrders(ordersWithItems);
       setError("");
     } catch (err) {
       console.error(err);
@@ -28,10 +33,9 @@ export const RecentOrders = () => {
     }
   };
 
-  // Fetch orders on mount and every 5 seconds
   useEffect(() => {
     loadOrders();
-    const interval = setInterval(loadOrders, 5000); // auto-refresh every 5s
+    const interval = setInterval(loadOrders, 5000); // Auto-refresh every 5s
     return () => clearInterval(interval);
   }, []);
 
@@ -62,7 +66,9 @@ export const RecentOrders = () => {
     );
   }
 
-  const sortedOrders = [...orders].sort((a, b) => b.id - a.id);
+  const sortedOrders = [...orders].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
 
   return (
     <div className="bg-white rounded-xl shadow p-6">
@@ -75,6 +81,7 @@ export const RecentOrders = () => {
               <th className="px-6 py-4 text-center">Customer</th>
               <th className="px-6 py-4 text-center">Status</th>
               <th className="px-6 py-4 text-center">Price</th>
+              <th className="px-6 py-4 text-center">Menu Items</th>
             </tr>
           </thead>
           <tbody>
@@ -101,7 +108,24 @@ export const RecentOrders = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-center font-bold text-yellow-600 align-middle">
-                  ₱{order.total_amount || 0}
+                  ₱{Number(order.total_amount).toLocaleString()}
+                </td>
+                <td className="px-6 py-4 text-center align-middle">
+                  {order.items && order.items.length > 0 ? (
+                    <ul className="space-y-1 text-sm text-gray-700">
+                      {order.items.map((item, itemIndex) => (
+                        <li key={itemIndex}>
+                          {item.food_name} ({item.quantity} x ₱
+                          {isNaN(item.price)
+                            ? "0.00"
+                            : (parseFloat(item.price) || 0).toFixed(2)}
+                          )
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-gray-500">No items</span>
+                  )}
                 </td>
               </tr>
             ))}

@@ -13,20 +13,35 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/dashboard/stats");
-        setStats(res.data);
+  // Function to fetch the recent orders and their items
+  const loadDashboard = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/dashboard/stats");
+      setStats(res.data);
 
-        const ordersRes = await axios.get(
-          "http://localhost:5000/dashboard/recent-orders"
-        );
-        setRecentOrders(ordersRes.data || []);
-      } catch (err) {
-        console.error("Failed to load dashboard data:", err);
-      }
-    };
+      const ordersRes = await axios.get(
+        "http://localhost:5000/dashboard/recent-orders"
+      );
+      const orders = ordersRes.data || [];
+
+      // Fetch order items for each order
+      const ordersWithItems = await Promise.all(
+        orders.map(async (order) => {
+          const orderItemsRes = await axios.get(
+            `http://localhost:5000/dashboard/order-items/${order.id}`
+          );
+          order.items = orderItemsRes.data; // Add the items to the order
+          return order;
+        })
+      );
+
+      setRecentOrders(ordersWithItems);
+    } catch (err) {
+      console.error("Failed to load dashboard data:", err);
+    }
+  };
+
+  useEffect(() => {
     loadDashboard();
   }, []);
 
@@ -154,6 +169,7 @@ const AdminDashboard = () => {
                 <OrdersChart />
               </div>
 
+              {/* Pass the orders with their items to the RecentOrders component */}
               <RecentOrders orders={recentOrders} />
             </>
           )}

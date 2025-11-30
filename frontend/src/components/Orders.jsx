@@ -1,4 +1,3 @@
-// Orders.jsx
 import axios from "axios";
 import { Search, ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -50,10 +49,19 @@ const Orders = () => {
   const [selectedOrderItems, setSelectedOrderItems] = useState([]);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
 
-  useEffect(() => {
-    const loadOrders = async () => {
+  // Function to load orders
+  const loadOrders = async () => {
+    try {
       const data = await fetchAllOrders();
-      setOrders(data);
+
+      // Sort the orders by created_at (newest to oldest)
+      const sortedData = data.sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        return dateB - dateA; // newest first
+      });
+
+      setOrders(sortedData);
 
       setStats({
         totalOrders: data.length,
@@ -61,9 +69,21 @@ const Orders = () => {
         pending: data.filter((o) => o.status === "pending").length,
         completed: data.filter((o) => o.status === "completed").length,
       });
-    };
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  };
 
-    loadOrders();
+  // Fetch orders initially and set interval for auto-fetch
+  useEffect(() => {
+    loadOrders(); // Initial fetch
+
+    const intervalId = setInterval(() => {
+      loadOrders(); // Fetch every 30 seconds
+    }, 30000); // 30 seconds interval
+
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   const filteredOrders = orders.filter((order) => {
